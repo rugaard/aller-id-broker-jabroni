@@ -23,7 +23,7 @@ class Controller extends BaseController
      */
     public function index(SSOBroker $broker): View
     {
-        $allerIdCookie = !Cookie::has(key: 'aller_id') ? 'N/A' : (Cookie::get(key: 'aller_id') !== '' ? $broker->encrypter->decrypt(payload: Cookie::get(key: 'aller_id')) : '(tom)');
+        $allerIdCookie = Cookie::has(key: 'aller_id') ? $broker->encrypter->decrypt(payload: Cookie::get(key: 'aller_id')) : '(tom)';
         return view(view: 'index', data: compact('allerIdCookie'));
     }
 

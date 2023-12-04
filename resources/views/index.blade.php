@@ -10,7 +10,7 @@
     </head>
     <body class="h-screen antialiased">
         <div class="max-w-xl h-screen mx-auto flex flex-col items-center justify-center">
-            <h1 class="text-6xl font-bold mb-12">JABRONI</h1>
+            <h1 class="text-6xl font-bold mb-12 uppercase">Jabroni</h1>
             @auth
             <div class="flex items-center justify-center gap-x-5 mb-2">
                 <img src="https://ui-avatars.com/api/?name=Morten+Rugaard" class="rounded-lg border border-white outline outline-1 outline-gray-300" width="70" height="70" alt="">

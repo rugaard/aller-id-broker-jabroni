@@ -65,13 +65,16 @@ class Broker
         // Get current full URL.
         $currentUrl = URL::full();
 
+        // Site domain.
+        $domain = $this->domain();
+
         // Redirect user to SSO authentication sequence.
         return redirect(to: $this->ssoServerUrl . '/auth?' . http_build_query(data: [
             'broker' => $this->id,
             'token' => $this->token,
-            'domain' => $this->domain(),
+            'domain' => $domain,
             'origin' => $currentUrl,
-            'checksum' => $this->generateChecksum(parameters: [$currentUrl])
+            'checksum' => $this->generateChecksum(parameters: [$domain, $currentUrl])
         ]));
     }
 
@@ -88,16 +91,20 @@ class Broker
         // Increase security by encrypting credentials during transport.
         $encryptedCredentials = $this->encrypter->encrypt(value: $email . ':' . $password);
 
+        // Site domain.
+        $domain = $this->domain();
+
         // Collect and merge parameters.
         $parameters = array_merge($parameters, [
-            'credentials' => $encryptedCredentials
+            'credentials' => $encryptedCredentials,
+            'domain' => $domain
         ]);
 
         // Redirect user to login attempt.
         return redirect(to: $this->ssoServerUrl . '/auth/login?' . http_build_query(data: array_merge($parameters, [
             'broker' => $this->id,
             'token' => $this->token,
-            'domain' => $this->domain(),
+            'domain' => $domain,
             'checksum' => $this->generateChecksum(parameters: $parameters ?? [])
         ])));
     }
@@ -110,8 +117,12 @@ class Broker
      */
     public function logoutRedirect(array $parameters = []): RedirectResponse
     {
+        // Site domain.
+        $domain = $this->domain();
+
         // Collect and merge parameters.
         $parameters = array_merge($parameters, [
+            'domain' => $domain,
             'session' => Cookie::get('aller_id')
         ]);
 
@@ -119,7 +130,7 @@ class Broker
         return redirect(to: $this->ssoServerUrl . '/auth/logout?' . http_build_query(data: array_merge($parameters, [
             'broker' => $this->id,
             'token' => $this->token,
-            'domain' => $this->domain(),
+            'domain' => $domain,
             'checksum' => $this->generateChecksum(parameters: $parameters ?? [])
         ])));
     }
@@ -132,9 +143,13 @@ class Broker
      */
     public function userInfo(string $encryptedSessionToken): array
     {
-        return $this->request(method: 'get', endpoint: 'user', headers: [
+        $response = $this->request(method: 'get', endpoint: 'user', parameters: [
+            'referer' => request()->path()
+        ], headers: [
             'Authorization' => 'Aller ' . $encryptedSessionToken
         ]);
+
+        return $response['data'] ?? [];
     }
 
     /**
@@ -147,16 +162,17 @@ class Broker
      * @param string|null $as
      * @return array
      */
-    protected function request(string $method, string $endpoint, array $parameters = [], array $headers = [], ?string $as = null): array
+    protected function request(string $method, string $endpoint, array $parameters = [], array $headers = [], ?string $as = null, ?string $userAgent = null): array
     {
         // Base request.
         $request = Http::acceptJson()->withUrlParameters(parameters: [
             'ssoServerUrl' => $this->ssoServerUrl,
             'endpoint' => $endpoint
         ])->withHeaders(headers: array_merge($headers, [
+            'User-Agent' => $userAgent ?? request()->userAgent(),
             'X-Broker-Id' => $this->id,
+            'X-Broker-Token' => $this->token,
             'X-Checksum' => $this->generateChecksum(parameters: $parameters),
-            'X-Token' => $this->token,
             'X-Site-Domain' => $this->domain()
         ]));
 
@@ -195,7 +211,7 @@ class Broker
             ksort(array: $parameters, flags: SORT_NATURAL);
 
             // Validate checksum equals received query parameters.
-            return $checksum === sprintf('%s:%s:%s:%s', implode(separator: ':', array: $parameters), $this->domain(), $this->token, $this->id);
+            return $checksum === sprintf('%s:%s:%s', implode(separator: ':', array: $parameters), $this->token, $this->id);
         } catch (DecryptException) {
             return false;
         }
@@ -214,7 +230,7 @@ class Broker
 
         // Generate encrypted checksum.
         return $this->encrypter->encrypt(value:
-            sprintf('%s:%s:%s:%s', $this->id, $this->token, $this->domain(), implode(separator: ':', array: $parameters))
+            sprintf('%s:%s:%s', $this->id, $this->token, implode(separator: ':', array: $parameters))
         );
     }
 

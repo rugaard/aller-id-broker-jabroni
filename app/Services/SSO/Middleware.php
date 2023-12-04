@@ -9,6 +9,7 @@ use Illuminate\Auth\GenericUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -38,14 +39,14 @@ class Middleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->has('aller-id')) {
+        if ($request->has(key: 'aller-id')) {
             // Get payload from request.
-            $payload = $request->get('aller-id');
+            $payload = $request->get(key: 'aller-id');
 
             // Redirect with "aller_id" cookie.
-            return redirect($request->fullUrlWithoutQuery(['aller-id', 'checksum', 'code', 'error']))->withCookie(
-                !$this->broker->isDecryptable($payload) || !$this->broker->validateChecksum($request->get('checksum', $request->except(['aller-id', 'checksum', 'code', 'error']))) || $payload === 'false'
-                    ? Cookie::make(name: 'aller_id', value: '', minutes: 5, secure: true)
+            return redirect(to: $request->fullUrlWithoutQuery(keys: ['aller-id', 'checksum', 'code', 'error']))->withCookie(
+                cookie: !$this->broker->isDecryptable(value: $payload) || !$this->broker->validateChecksum(checksum: $request->get(key: 'checksum'), parameters: $request->except(keys: ['aller-id', 'checksum', 'code', 'error'])) || $payload === 'false'
+                    ? Cookie::make(name: 'aller_id', value: '', minutes: 1, secure: true)
                     : Cookie::forever(name: 'aller_id', value: $payload, secure: true)
             );
         }
@@ -53,30 +54,29 @@ class Middleware
         // When no Aller ID cookie is available,
         // redirect user to SSO service fo potential
         // automatic authentication by shared session.
-        if (!Cookie::has('aller_id')) {
+        if (!Cookie::has(key: 'aller_id')) {
             return $this->broker->authRedirect();
         }
 
         // When Aller ID cookie is available,
         // then fetch user info from SSO service.
-        if (Cookie::get('aller_id') !== '') {
+        if (Cookie::get(key: 'aller_id') !== '') {
             try {
                 // Fetch user information.
-                $userInfo = $this->broker->userInfo(Cookie::get('aller_id'));
+                $userInfo = $this->broker->userInfo(encryptedSessionToken: Cookie::get(key: 'aller_id'));
 
                 // Create a generic user with info from Aller ID,
                 // and authenticated within our application.
-                Auth::setUser(new GenericUser((array) $userInfo));
+                Auth::setUser(user: new GenericUser(attributes: (array) $userInfo));
             } catch (Throwable $e) {
-                dd($e->getMessage());
                 // Log out authenticated user.
                 Auth::logout();
 
                 // Reload current URL without "aller_id" cookie,
                 // since it's containing user session is expired.
-                // return redirect()->refresh()->withCookie(
-                //     Cookie::forget('aller_id')
-                // );
+                return redirect(to: $request->fullUrlWithoutQuery(keys: ['aller-id', 'checksum', 'code', 'error']))->withCookie(
+                    cookie: Cookie::make(name: 'aller_id', value: '', minutes: 1, secure: true)
+                );
             }
         }
 

@@ -32,7 +32,7 @@ class Broker
      *
      * @var string
      */
-    protected string $ssoServerUrl = 'https://aller-id.test/sso';
+    protected string $ssoServerUrl = 'https://aller-id.test';
 
     /**
      * Broker encrypter.
@@ -69,7 +69,7 @@ class Broker
         $domain = $this->domain();
 
         // Redirect user to SSO authentication sequence.
-        return redirect(to: $this->ssoServerUrl . '/auth?' . http_build_query(data: [
+        return redirect(to: $this->ssoServerUrl . '/sso/auth?' . http_build_query(data: [
             'broker' => $this->id,
             'token' => $this->token,
             'domain' => $domain,
@@ -101,7 +101,7 @@ class Broker
         ]);
 
         // Redirect user to login attempt.
-        return redirect(to: $this->ssoServerUrl . '/auth/login?' . http_build_query(data: array_merge($parameters, [
+        return redirect(to: $this->ssoServerUrl . '/sso/auth/login?' . http_build_query(data: array_merge($parameters, [
             'broker' => $this->id,
             'token' => $this->token,
             'domain' => $domain,
@@ -127,7 +127,7 @@ class Broker
         ]);
 
         // Redirect user to logout sequence.
-        return redirect(to: $this->ssoServerUrl . '/auth/logout?' . http_build_query(data: array_merge($parameters, [
+        return redirect(to: $this->ssoServerUrl . '/sso/auth/logout?' . http_build_query(data: array_merge($parameters, [
             'broker' => $this->id,
             'token' => $this->token,
             'domain' => $domain,
@@ -143,7 +143,7 @@ class Broker
      */
     public function userInfo(string $encryptedSessionToken): array
     {
-        $response = $this->request(method: 'get', endpoint: 'user', parameters: [
+        $response = $this->request(method: 'get', endpoint: 'me', parameters: [
             'referer' => request()->path()
         ], headers: [
             'Authorization' => 'Aller ' . $encryptedSessionToken
@@ -188,7 +188,7 @@ class Broker
             $request->withoutVerifying();
         }
 
-        return $request->{$method}('{+ssoServerUrl}/{endpoint}')->throw()->json();
+        return $request->{$method}('{+ssoServerUrl}/api/v1/{endpoint}')->throw()->json();
     }
 
     /**

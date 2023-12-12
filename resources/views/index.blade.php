@@ -41,10 +41,10 @@
                 </form>
             </fieldset>
             @endguest
-            <div class="text-md flex flex-col items-center justify-center mt-10 space-y-1.5">
+            {{-- <div class="text-md flex flex-col items-center justify-center mt-10 space-y-1.5">
                 <strong class="font-medium">Aller ID</strong>
                 <span class="text-gray-500 italic break-all">{{ $allerIdCookie }}</span>
-            </div>
+            </div> --}}
         </div>
     </body>
 </html>

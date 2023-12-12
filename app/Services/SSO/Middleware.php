@@ -68,7 +68,7 @@ class Middleware
                 // Create a generic user with info from Aller ID,
                 // and authenticated within our application.
                 Auth::setUser(user: new GenericUser(attributes: (array) $userInfo));
-            } catch (Throwable) {
+            } catch (Throwable $e) {
                 // Log out authenticated user.
                 Auth::logout();
 
